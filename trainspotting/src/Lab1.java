@@ -58,7 +58,39 @@ public class Lab1
           SensorEvent sensor = tsi.getSensor(id);
           int x = sensor.getXpos();
           int y = sensor.getYpos();
-          if (x==14 &&y ==7) // sensor to left of the upper most right switch
+          tsi.setSpeed(id, 0); // stop the train untill it passes sensor
+          if (x == 7 && y == 3){ // upper sensor
+            tsi.setSpeed(id, speed);
+          }
+          else if (x==6 && y == 6) // senor to the left of the cross
+          {
+            if (position == 0)
+            {
+              System.out.println("sne");
+              sem[0].acquire();
+              tsi.setSpeed(id, speed);
+              sem[0].release();
+            }
+            else
+            {
+              System.out.println("aa");
+              sem[0].release();
+              tsi.setSpeed(id, speed);
+            }
+          }
+          else if (x==11 && y == 7) // senor to the left of the cross
+          {
+            if (position == 1)
+            {
+              sem[0].acquire();
+              tsi.setSpeed(id, speed);
+            }
+            else
+            {
+              sem[0].release();
+              tsi.setSpeed(id, speed);
+            }
+          }          else if (x==14 &&y ==7) // sensor to left of the upper most right switch
           {
             sem[1].acquire();
             tsi.setSwitch(17, 7, 2); // 2 : up , 1 : down

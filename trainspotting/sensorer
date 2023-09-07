@@ -1,0 +1,9 @@
+semaphore0 = first upmost track
+semaphore1 = upper trainstation track
+semaphore2 = crossing
+semaphore3 = critical right section
+semaphore4 = upper middle parallel track
+semaphore5 = bottom middle parallel track
+semaphore6 = critical left section
+semaphore7 = over trainstation track
+semaphore8 = bottom trainstation track

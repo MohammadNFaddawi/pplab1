@@ -12,12 +12,12 @@ public class Lab1 {
   }
 
   public Lab1(int speed1, int speed2) {
-    Train train1 = new Train(1, speed1, 0, sem);
-    Train train2 = new Train(2, speed2, 1, sem);
-    train1.start();
-    train2.start();
 
     try {
+      Train train1 = new Train(1, speed1, 0, sem);// position 0 means that the train going down
+      Train train2 = new Train(2, speed2, 1, sem);// position 1 means that the train going up
+      train1.start();
+      train2.start();
       train1.join();
       train2.join();
 
@@ -42,7 +42,7 @@ public class Lab1 {
       this.sem = sem;
     }
 
-    public int[] nextSensor(int x, int y, int next_x, int next_y, int id, int sem_nr) {
+    public void nextSensor(int x, int y, int next_x, int next_y, int id, int sem_nr) {
       // block semaphore until next sensor is reached
       try {
         while (!(x == next_x && y == next_y)) {
@@ -50,22 +50,53 @@ public class Lab1 {
           x = next_sen.getXpos();
           y = next_sen.getYpos();
         } // check that it reached the next sensor
-        System.out.println("out");
-
         sem[sem_nr].release();
+        System.out.println("semaphore " + String.valueOf(sem_nr) + " realesed");
       } catch (CommandException | InterruptedException e) {
         e.printStackTrace();
       }
-      return new int[] { x, y };
+    }
+
+    public void sen_before_sw(int sem_nr, int sw_x, int sw_y, int sw_dir, int id, int speed) {
+      try {
+        sem[sem_nr].acquire();
+        System.out.println("semaphore acquired " + String.valueOf(sem_nr));
+        tsi.setSwitch(sw_x, sw_y, sw_dir);
+        tsi.setSpeed(id, speed);
+      } catch (InterruptedException | CommandException e) {
+        // TODO Auto-generated catch block
+        e.printStackTrace();
+      }
+    }
+
+    public void sen_cross(int pos, int id, int speed, int x, int y, int next_x, int next_y) {
+      try {
+        if (position == pos) {
+          sem[2].acquire();
+          System.out.println("cross ticket acquired " + String.valueOf(2));
+          tsi.setSpeed(id, speed);
+          nextSensor(x, y, next_x, next_y, id, 2);
+
+        } else {
+          tsi.setSpeed(id, speed);
+
+        }
+
+      } catch (InterruptedException | CommandException e) {
+        // TODO Auto-generated catch block
+        e.printStackTrace();
+      }
     }
 
     // run
     public void run() {
       try {
         tsi.setSpeed(id, speed);
-        sem[0].acquire(); // starting state
-        sem[7].acquire();
-
+        if (position == 0) {
+          sem[0].acquire(); // starting state
+        } else if (position == 1) {
+          sem[7].acquire();
+        }
         while (true) {
 
           SensorEvent sensor = tsi.getSensor(id);
@@ -75,200 +106,174 @@ public class Lab1 {
           // track 1
           if (x == 15 && y == 3) { // upper most sensor
             if (position == 1) {
+              sleep(1000 + (20 * Math.abs(speed)));
               position = 0;
-              wait(1000 + (20 * Math.abs(speed)));
               speed = -speed;
             }
             tsi.setSpeed(id, speed);
-            x = nextSensor(x, y, 19, 9, id, 0)[0];
-            y = nextSensor(x, y, 19, 9, id, 0)[1];
           }
           // cross sensors
+
           else if (x == 6 && y == 6) // senor to the left of the cross
           {
-            if (position == 0) {
+            sen_cross(0, id, speed, x, y, 11, 7);
+          }
 
-              sem[2].acquire();
-              tsi.setSpeed(id, speed);
-              x = nextSensor(x, y, 11, 7, id, 2)[0];
-              y = nextSensor(x, y, 11, 7, id, 2)[1];
-            } else {
-              tsi.setSpeed(id, speed);
-            }
-
-          } else if (x == 11 && y == 7) // senor to the right of the cross
+          else if (x == 11 && y == 7) // senor to the right of the cross
           {
-            if (position == 1) {
-              sem[2].acquire();
-              tsi.setSpeed(id, speed);
-              x = nextSensor(x, y, 6, 6, id, 2)[0];
-              y = nextSensor(x, y, 6, 6, id, 2)[1];
-            } else {
-              tsi.setSpeed(id, speed);
-            }
+            sen_cross(1, id, speed, x, y, 6, 6);
           } // sensors near the upper right switch
-          else if (x == 14 && y == 7) // sensor to left of switchx1 : down
+          else if (x == 14 && y == 7) // sensor to left of switch1 : down
           {
             if (position == 0) {
-              sem[3].acquire();
-              tsi.setSwitch(17, 7, 2); // 2 : up , 1 : down
-              if (sem[4].tryAcquire()) { // upper middle parallel track
-                tsi.setSwitch(15, 9, 2); // 2 : up , 1 : down
-                x = nextSensor(x, y, 12, 9, id, 3)[0];
-                y = nextSensor(x, y, 12, 9, id, 3)[1];
-
-              } else { // lower middle parallel track
-                sem[5].acquire();
-                tsi.setSwitch(15, 9, 1);
-                x = nextSensor(x, y, 13, 10, id, 3)[0];
-                y = nextSensor(x, y, 13, 10, id, 3)[1];
-              }
+              sen_before_sw(3, 17, 7, 2, id, speed);
+              nextSensor(x, y, 19, 9, id, 0);
             } else {
               tsi.setSpeed(id, speed);
             }
-          } else if (x == 14 && y == 5) { // upper train station section// train station sensor
+          } // upper station track
+          else if (x == 14 && y == 5) { // upper train station sensor// train
             if (position == 1) {
+              sleep(1000 + (20 * Math.abs(speed)));
               position = 0;
-              wait(1000 + (20 * Math.abs(speed)));
               speed = -speed;
             }
             tsi.setSpeed(id, speed);
-            x = nextSensor(x, y, 19, 9, id, 1)[0];
-            y = nextSensor(x, y, 19, 9, id, 1)[1];
-          }
-
-          else if (x == 8 && y == 5) { // sensor upp the cross
-            if (position == 0) {
-              sem[2].acquire();
-              tsi.setSpeed(id, speed);
-              x = nextSensor(x, y, 11, 8, id, 2)[0];
-              y = nextSensor(x, y, 11, 8, id, 2)[1];
-            } else {
-              tsi.setSpeed(id, speed);
-            }
+          } else if (x == 8 && y == 5) { // sensor upp the cross
+            sen_cross(0, id, speed, x, y, 11, 8);
           } else if (x == 11 && y == 8) { // sensor down the cross
-            if (position == 1) {
-
-              sem[2].acquire();
-              tsi.setSpeed(id, speed);
-              x = nextSensor(x, y, 8, 5, id, 2)[0];
-              y = nextSensor(x, y, 8, 5, id, 2)[1];
-            } else {
-              tsi.setSpeed(id, speed);
-            }
+            sen_cross(1, id, speed, x, y, 8, 5);
           } else if (x == 15 && y == 8) // sensor to bottom of switch
           {
             if (position == 0) {
-              sem[3].acquire(); // critical section right
-              tsi.setSwitch(17, 7, 1); // 1 down 2 up
-              tsi.setSpeed(id, speed);
-              x = nextSensor(x, y, 19, 9, id, 1)[0];
-              y = nextSensor(x, y, 19, 9, id, 1)[1];
-
-              if (sem[4].tryAcquire()) { // upper middle parallel track
-                tsi.setSwitch(15, 9, 2); // 2 : up , 1 : down
-                x = nextSensor(x, y, 12, 9, id, 3)[0];
-                y = nextSensor(x, y, 12, 9, id, 3)[1];
-              } else { // lower middle parallel track
-                sem[5].acquire();
-                tsi.setSwitch(15, 9, 1);
-                x = nextSensor(x, y, 13, 10, id, 3)[0];
-                y = nextSensor(x, y, 13, 10, id, 3)[1];
-              }
+              sen_before_sw(3, 17, 7, 1, id, speed);
+              nextSensor(x, y, 19, 9, id, 1);
             } else {
               tsi.setSpeed(id, speed);
             }
           }
           // right critical section sensor
-          else if (x == 19 && y == 9) // sensor to right of switch
-          {
+          else if (x == 19 && y == 9) { // sensor to right of switch
             tsi.setSpeed(id, speed);
+            if (position == 0) {
+              if (sem[4].tryAcquire()) { // upper middle parallel track
+                System.out.println("upper middle track acquired " + String.valueOf(4));
+                tsi.setSwitch(15, 9, 2); // 2 : up , 1 : down
+                nextSensor(x, y, 12, 9, id, 3);
+
+              } else { // lower middle parallel track
+                sem[5].acquire();
+                System.out.println("bottom middle track acquired " + String.valueOf(5));
+
+                tsi.setSwitch(15, 9, 1);
+                nextSensor(x, y, 13, 10, id, 3);
+              }
+            } else {
+              if (sem[1].tryAcquire()) { // upper middle parallel track
+                System.out.println("upper station track acquired " + String.valueOf(1));
+                tsi.setSwitch(17, 7, 1); // 2 : up , 1 : down
+                nextSensor(x, y, 15, 8, id, 3);
+              } else { // lower middle parallel track
+                sem[0].acquire();
+                System.out.println("upper train track acquired " + String.valueOf(0));
+                tsi.setSwitch(17, 7, 2); // 2 : up , 1 : down
+                nextSensor(x, y, 14, 7, id, 3);
+              }
+            }
           }
           // upper parallel middle section
-          // else if (x == 12 && y == 9) // sensor to right
-          // {
-          // if (position == 1) {
-          // sem[3].acquire();
-          // tsi.setSwitch(15, 9, 2); // 2 up 1 down
-          // tsi.setSpeed(id, speed);
-          // if (sem[0].tryAcquire()) { // upper middle parallel track
-          // tsi.setSwitch(17, 7, 2); // 2 : up , 1 : down
-          // x = nextSensor(x, y, 14, 7, id, 3)[0];
-          // y = nextSensor(x, y, 14, 7, id, 3)[1];
-          // } else { // lower middle parallel track
-          // sem[1].acquire();
-          // tsi.setSwitch(17, 7, 1);
-          // x = nextSensor(x, y, 15, 8, id, 3)[0];
-          // y = nextSensor(x, y, 15, 8, id, 3)[1];
-          // }
+          else if (x == 12 && y == 9) // sensor to right
+          {
+            if (position == 1) {
+              sen_before_sw(3, 15, 9, 2, id, speed);
+              nextSensor(x, y, 19, 9, id, 4);
+            } else {
+              tsi.setSpeed(id, speed);
+            }
+          } // left sensor to upper middle track
+          else if (x == 7 && y == 9) {
+            if (position == 0) {
+              sen_before_sw(6, 4, 9, 1, id, speed);
+              nextSensor(x, y, 1, 10, id, 4);
+            } else {
+              tsi.setSpeed(id, speed);
+            }
+          }
+          // bottom parallel middle section
+          else if (x == 13 && y == 10) { // right sensor
+            if (position == 1) {
+              sen_before_sw(3, 15, 9, 1, id, speed);
+              nextSensor(x, y, 19, 9, id, 5);
+            } else {
+              tsi.setSpeed(id, speed);
+            }
+          } else if (x == 7 && y == 10) {
+            if (position == 0) {
+              sen_before_sw(6, 4, 9, 2, id, speed);
+              nextSensor(x, y, 1, 10, id, 5);
+            } else {
+              tsi.setSpeed(id, speed);
+            }
+          } else if (x == 1 && y == 10) {
+            tsi.setSpeed(id, speed);
+            if (position == 1) {
+              if (sem[4].tryAcquire()) { // upper middle parallel track
+                System.out.println("upper middle track acquired " + String.valueOf(4));
+                tsi.setSwitch(4, 9, 1);
+                nextSensor(x, y, 7, 9, id, 6);
 
-          // } else {
-          // tsi.setSpeed(id, speed);
-          // }
-          // } else if (x == 7 && y == 9) // left sensor
-          // {
-          // if (position == 0) {
-          // sem[6].acquire(); // left critical section
-          // tsi.setSwitch(4, 9, 1); // 2 down 1 up
-          // tsi.setSpeed(id, speed);
+              } else { // lower middle parallel track
+                sem[5].acquire();
+                System.out.println("bottom middle track acquired " + String.valueOf(5));
 
-          // if (sem[8].tryAcquire()) { // lower trainstation
-          // tsi.setSwitch(3, 11, 2); // 2 down
-          // x = nextSensor(x, y, 4, 13, id, 6)[0];
-          // y = nextSensor(x, y, 4, 13, id, 6)[1];
-          // } else { // over trainstation
-          // sem[7].acquire();
-          // tsi.setSwitch(3, 11, 1); // 1 up
-          // x = nextSensor(x, y, 6, 11, id, 6)[0];
-          // y = nextSensor(x, y, 6, 11, id, 6)[1];
-          // }
-          // } else {
-          // tsi.setSpeed(id, speed);
-          // }
-          // }
-          // // middle lower track
-          // else if (x == 13 && y == 10) // sensor to right
-          // {
-          // if (position == 1) {
-          // sem[3].acquire();
-          // tsi.setSwitch(15, 9, 1); // 2 up 1 down
-          // tsi.setSpeed(id, speed);
-          // if (sem[0].tryAcquire()) { // upper middle parallel track
-          // tsi.setSwitch(17, 7, 2); // 2 : up , 1 : down
-          // x = nextSensor(x, y, 14, 7, id, 3)[0];
-          // y = nextSensor(x, y, 14, 7, id, 3)[1];
-          // } else { // lower middle parallel track
-          // sem[1].acquire();
-          // tsi.setSwitch(17, 7, 1);
-          // x = nextSensor(x, y, 15, 8, id, 3)[0];
-          // y = nextSensor(x, y, 15, 8, id, 3)[1];
-          // }
-
-          // } else {
-          // tsi.setSpeed(id, speed);
-          // }
-          // } else if (x == 7 && y == 9) // left sensor
-          // {
-          // if (position == 0) {
-          // sem[6].acquire(); // left critical section
-          // tsi.setSwitch(4, 9, 1); // 2 down 1 up
-          // tsi.setSpeed(id, speed);
-
-          // if (sem[8].tryAcquire()) { // lower trainstation
-          // tsi.setSwitch(3, 11, 2); // 2 down
-          // x = nextSensor(x, y, 4, 13, id, 6)[0];
-          // y = nextSensor(x, y, 4, 13, id, 6)[1];
-          // } else { // over trainstation
-          // sem[7].acquire();
-          // tsi.setSwitch(3, 11, 1); // 1 up
-          // x = nextSensor(x, y, 6, 11, id, 6)[0];
-          // y = nextSensor(x, y, 6, 11, id, 6)[1];
-          // }
-          // } else {
-          // tsi.setSpeed(id, speed);
-          // }
-          // }
-          else {
+                tsi.setSwitch(4, 9, 2);
+                nextSensor(x, y, 7, 10, id, 6);
+              }
+            } else { // going down
+              if (sem[8].tryAcquire()) { // upper middle parallel track
+                System.out.println("bottom station track acquired " + String.valueOf(8));
+                tsi.setSwitch(3, 11, 2);
+                nextSensor(x, y, 4, 13, id, 6);
+              } else { // lower middle parallel track
+                sem[7].acquire();
+                System.out.println("bottom train track acquired " + String.valueOf(7));
+                tsi.setSwitch(3, 11, 1);
+                nextSensor(x, y, 6, 11, id, 6);
+              }
+            }
+          }
+          // bottom train tracks
+          else if (x == 6 && y == 11) {
+            if (position == 1) {
+              sen_before_sw(6, 3, 11, 1, id, speed);
+              nextSensor(x, y, 1, 10, id, 7);
+            } else {
+              tsi.setSpeed(id, speed);
+            }
+          } else if (x == 15 && y == 11) {
+            if (position == 0) {
+              sleep(1000 + (20 * Math.abs(speed)));
+              position = 1;
+              speed = -speed;
+            }
+            tsi.setSpeed(id, speed);
+          }
+          // bottom station track
+          else if (x == 4 && y == 13) {
+            if (position == 1) {
+              sen_before_sw(6, 3, 11, 2, id, speed);
+              nextSensor(x, y, 1, 10, id, 8);
+            } else {
+              tsi.setSpeed(id, speed);
+            }
+          } else if (x == 14 && y == 13) {
+            if (position == 0) {
+              sleep(1000 + (20 * Math.abs(speed)));
+              position = 1;
+              speed = -speed;
+            }
+            tsi.setSpeed(id, speed);
+          } else {
             tsi.setSpeed(id, speed);
           }
         }

@@ -31,7 +31,6 @@ public class Lab1 {
       train2.join();
 
     } catch (InterruptedException e) {
-      // TODO Auto-generated catch block
       e.printStackTrace();
     }
   }
@@ -72,7 +71,6 @@ public class Lab1 {
         tsi.setSwitch(sw_x, sw_y, sw_dir);
         tsi.setSpeed(id, speed);
       } catch (InterruptedException | CommandException e) {
-        // TODO Auto-generated catch block
         e.printStackTrace();
       }
     }
@@ -87,7 +85,6 @@ public class Lab1 {
         } else
           tsi.setSpeed(id, speed);
       } catch (InterruptedException | CommandException e) {
-        // TODO Auto-generated catch block
         e.printStackTrace();
       }
     }

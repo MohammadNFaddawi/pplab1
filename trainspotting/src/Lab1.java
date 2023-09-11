@@ -53,11 +53,11 @@ public class Lab1 {
     public void nextSensor(int x, int y, int next_x, int next_y, int sem_nr) // block semaphore
     {
       try {
-        while (!(x == next_x && y == next_y)) { // as long as the train didn't reach the next sensor
-          SensorEvent next_sen = tsi.getSensor(id); // look if the while loop is needed
+        while (!(x == next_x && y == next_y)) { // as long as the train didn't reach the next sensor hold the semaphore
+          SensorEvent next_sen = tsi.getSensor(id);
           x = next_sen.getXpos();
           y = next_sen.getYpos();
-        } // check that it reached the next sensor
+        } // once it reached the next sensor
         sem[sem_nr].release();
       } catch (CommandException | InterruptedException e) {
         e.printStackTrace();
@@ -78,11 +78,11 @@ public class Lab1 {
     public void sen_cross(boolean state, int x, int y, int next_x, int next_y) // cross semaphore logic
     {
       try {
-        if (going_up == state) {
+        if (going_up == state) { // if the train into the cross section
           sem[2].acquire();
           tsi.setSpeed(id, speed);
-          nextSensor(x, y, next_x, next_y, 2);
-        } else
+          nextSensor(x, y, next_x, next_y, 2); // block the semaphore until it passes the cross
+        } else // going away from the cross
           tsi.setSpeed(id, speed);
       } catch (InterruptedException | CommandException e) {
         e.printStackTrace();
@@ -92,12 +92,12 @@ public class Lab1 {
     public void end_track_sensor(boolean old_state) // stop the train and switch its direction then start it again
     {
       try {
-        if (going_up == old_state) {
-          sleep(1000 + (20 * Math.abs(speed)));
-          going_up = !going_up;
+        if (going_up == old_state) { // if moving towards station or dead end
+          sleep(1000 + (20 * Math.abs(speed))); // standstill at station or dead end
+          going_up = !going_up; // changing direction
           speed = -speed;
         }
-        tsi.setSpeed(id, speed);
+        tsi.setSpeed(id, speed); // start
       } catch (InterruptedException | CommandException e) {
         e.getStackTrace();
       }
@@ -106,17 +106,17 @@ public class Lab1 {
     // run
     public void run() {
       try {
-        tsi.setSpeed(id, speed);
-        if (!going_up)
-          sem[0].acquire(); // starting state
-        else
+        tsi.setSpeed(id, speed); // initial
+        if (!going_up) // train 1
+          sem[0].acquire(); // acquiring initial semaphores
+        else // train 2
           sem[7].acquire();
         while (true) // the main program
         {
           SensorEvent sensor = tsi.getSensor(id);
           int x = sensor.getXpos();
           int y = sensor.getYpos();
-          tsi.setSpeed(id, 0); // stop the train if sensor doesnt allow it
+          tsi.setSpeed(id, 0); // stop the train if no if statements was fullfilled
 
           // snesors before each end
           if ((x == 15 && y == 3) || (x == 14 && y == 5)) // upper end sensors, direction: going up to going down
@@ -125,25 +125,25 @@ public class Lab1 {
             end_track_sensor(false);
 
           // cross sensors
-          else if (x == 6 && y == 6) // senor to the left of the cross
+          else if (x == 6 && y == 6) // sensor to the left of the cross
             sen_cross(false, x, y, 11, 7);
-          else if (x == 11 && y == 7) // senor to the right of the cross
+          else if (x == 11 && y == 7) // sensor to the right of the cross
             sen_cross(true, x, y, 6, 6);
           else if (x == 8 && y == 5) // sensor upp the cross
             sen_cross(false, x, y, 11, 8);
           else if (x == 11 && y == 8) // sensor down the cross
             sen_cross(true, x, y, 8, 5);
 
-          //
+          // sensor after upper right switch
           else if (x == 14 && y == 7) // sensor to left of switch1 : down
           {
             if (!going_up) {
-              sen_before_sw(3, 17, 7, 2);
-              nextSensor(x, y, 19, 9, 0);
+              sen_before_sw(3, 17, 7, 2); // switch right and acquire right critical section
+              nextSensor(x, y, 19, 9, 0); // release semaphore when train reaches sensor after switch
             } else
               tsi.setSpeed(id, speed);
           }
-          // upper station track
+          // using same logic as above for the other sensors connected to the same switch
           else if (x == 15 && y == 8) // sensor to bottom of switch
           {
             if (!going_up) {
@@ -152,8 +152,47 @@ public class Lab1 {
             } else
               tsi.setSpeed(id, speed);
           }
-          // right critical section sensor
-          else if (x == 19 && y == 9) { // sensor to right of switch
+          // same logic
+          else if (x == 12 && y == 9) // sensor to left of bottom right switch
+          {
+            if (going_up) {
+              sen_before_sw(3, 15, 9, 2);
+              nextSensor(x, y, 19, 9, 4);
+            } else
+              tsi.setSpeed(id, speed);
+          } else if (x == 13 && y == 10) { // bottom sensor to bottom right switch
+            if (going_up) {
+              sen_before_sw(3, 15, 9, 1);
+              nextSensor(x, y, 19, 9, 5);
+            } else
+              tsi.setSpeed(id, speed);
+          } else if (x == 7 && y == 9) {// right upper sensor to left upper switch
+            if (!going_up) {
+              sen_before_sw(6, 4, 9, 1);
+              nextSensor(x, y, 1, 10, 4);
+            } else
+              tsi.setSpeed(id, speed);
+          } else if (x == 7 && y == 10) {// bottom right sensor to left upper switch
+            if (!going_up) {
+              sen_before_sw(6, 4, 9, 2);
+              nextSensor(x, y, 1, 10, 5);
+            } else
+              tsi.setSpeed(id, speed);
+          } else if (x == 6 && y == 11) {// right upper sensor to bottom left switch
+            if (going_up) {
+              sen_before_sw(6, 3, 11, 1);
+              nextSensor(x, y, 1, 10, 7);
+            } else
+              tsi.setSpeed(id, speed);
+          } else if (x == 4 && y == 13) { // right bottom sensor to bottom left switch
+            if (going_up) {
+              sen_before_sw(6, 3, 11, 2);
+              nextSensor(x, y, 1, 10, 8);
+            } else
+              tsi.setSpeed(id, speed);
+          }
+          // right critical section sensor, sensor between the right switches
+          else if (x == 19 && y == 9) {
             tsi.setSpeed(id, speed);
             if (!going_up) {
               if (sem[4].tryAcquire()) { // upper middle parallel track
@@ -166,47 +205,18 @@ public class Lab1 {
                 nextSensor(x, y, 13, 10, 3);
               }
             } else {
-              if (sem[1].tryAcquire()) { // upper middle parallel track
+              if (sem[1].tryAcquire()) { // upper station track
                 tsi.setSwitch(17, 7, 1); // 2 : up , 1 : down
                 nextSensor(x, y, 15, 8, 3);
-              } else { // lower middle parallel track
+              } else { // upper end track
                 sem[0].acquire();
                 tsi.setSwitch(17, 7, 2); // 2 : up , 1 : down
                 nextSensor(x, y, 14, 7, 3);
               }
             }
           }
-          // upper parallel middle section
-          else if (x == 12 && y == 9) // sensor to right
-          {
-            if (going_up) {
-              sen_before_sw(3, 15, 9, 2);
-              nextSensor(x, y, 19, 9, 4);
-            } else
-              tsi.setSpeed(id, speed);
-          } // left sensor to upper middle track
-          else if (x == 7 && y == 9) {
-            if (!going_up) {
-              sen_before_sw(6, 4, 9, 1);
-              nextSensor(x, y, 1, 10, 4);
-            } else
-              tsi.setSpeed(id, speed);
-          }
-          // bottom parallel middle section
-          else if (x == 13 && y == 10) { // right sensor
-            if (going_up) {
-              sen_before_sw(3, 15, 9, 1);
-              nextSensor(x, y, 19, 9, 5);
-            } else
-              tsi.setSpeed(id, speed);
-
-          } else if (x == 7 && y == 10) {
-            if (!going_up) {
-              sen_before_sw(6, 4, 9, 2);
-              nextSensor(x, y, 1, 10, 5);
-            } else
-              tsi.setSpeed(id, speed);
-          } else if (x == 1 && y == 10) {
+          // left critical section sensor, sensor between the left switches
+          else if (x == 1 && y == 10) {
             tsi.setSpeed(id, speed);
             if (going_up) {
               if (sem[4].tryAcquire()) { // upper middle parallel track
@@ -218,32 +228,15 @@ public class Lab1 {
                 nextSensor(x, y, 7, 10, 6);
               }
             } else { // going down
-              if (sem[8].tryAcquire()) { // upper middle parallel track
+              if (sem[8].tryAcquire()) { // lower station track
                 tsi.setSwitch(3, 11, 2);
                 nextSensor(x, y, 4, 13, 6);
-              } else { // lower middle parallel track
+              } else { // lower end track
                 sem[7].acquire();
                 tsi.setSwitch(3, 11, 1);
                 nextSensor(x, y, 6, 11, 6);
               }
             }
-          }
-          // bottom train tracks
-          else if (x == 6 && y == 11) {
-            if (going_up) {
-              sen_before_sw(6, 3, 11, 1);
-              nextSensor(x, y, 1, 10, 7);
-            } else
-              tsi.setSpeed(id, speed);
-          }
-
-          // bottom station track
-          else if (x == 4 && y == 13) {
-            if (going_up) {
-              sen_before_sw(6, 3, 11, 2);
-              nextSensor(x, y, 1, 10, 8);
-            } else
-              tsi.setSpeed(id, speed);
           }
         }
       } catch (CommandException | InterruptedException e) {

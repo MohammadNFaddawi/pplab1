@@ -1,12 +1,12 @@
 import java.util.concurrent.Semaphore;
-
 import TSim.*;
 
 public class Lab1 {
   TSimInterface tsi = TSimInterface.getInstance();
   Semaphore[] sem = new Semaphore[9];
-  {
-    for (int i = 0; i < 9; i++) {
+
+  public Lab1(int speed1, int speed2) {
+    for (int i = 0; i < sem.length; i++) {
       sem[i] = new Semaphore(1, true); // creating semaphore
       // semaphore 0 = first upmost track
       // semaphore 1 = upper trainstation track
@@ -18,10 +18,6 @@ public class Lab1 {
       // semaphore 7 = over trainstation track
       // semaphore 8 = bottom trainstation track
     }
-  }
-
-  public Lab1(int speed1, int speed2) {
-
     try {
       Train train1 = new Train(1, speed1, false, sem);// train 1 is going down
       Train train2 = new Train(2, speed2, true, sem);// train 2 is going up
@@ -29,7 +25,6 @@ public class Lab1 {
       train2.start();
       train1.join();
       train2.join();
-
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
